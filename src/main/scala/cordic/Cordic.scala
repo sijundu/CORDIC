@@ -3,8 +3,9 @@ package cordic
 import chisel3._
 import chisel3.experimental.FixedPoint
 import chisel3.util.Decoupled
-
 import dsptools.numbers._
+import freechips.rocketchip.diplomacy.LazyModule
+import freechips.rocketchip.subsystem.BaseSubsystem
 
 /**
  * Base class for CORDIC parameters
@@ -37,7 +38,14 @@ case class FixedCordicParams(
   val protoXY = FixedPoint(xyWidth.W, (xyWidth-2).BP)
   // prototype for z
   // binary point is (xyWidth-3) to represent Pi/2 exactly
-  val protoZ = FixedPoint(zWidth.W, (zWidth-3).BP)
+  val protoZ = FixedPoint(zWidth.W, (zWidth-2).BP)
+  val minNumber = math.pow(2.0, -(zWidth-2))
+  // number of cordic stages
+  private var n = 0
+  while (breeze.numerics.tan(math.pow(2.0, -n)) >= minNumber) {
+    n += 1
+  }
+  val nStages = n
 }
 
 /**
@@ -76,7 +84,15 @@ object AddSub {
   }
 }
 
-class FixedIterativeCordic(val params: CordicParams[FixedPoint]) extends Module {
-  val io = IO(IterativeCordicIO(params))
 
+/**
+  * Mixin for top-level rocket to add a PWM
+  *
+  */
+trait HasPeripheryCordic extends BaseSubsystem {
+  // instantiate cordic chain
+  val cordicChain = LazyModule(new CordicThing(FixedCordicParams(8, 10)))
+  // connect memory interfaces to pbus
+  pbus.toVariableWidthSlave(Some("cordicWrite")) { cordicChain.writeQueue.mem.get }
+  pbus.toVariableWidthSlave(Some("cordicRead")) { cordicChain.readQueue.mem.get }
 }

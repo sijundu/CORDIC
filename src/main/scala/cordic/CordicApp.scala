@@ -60,5 +60,5 @@ object CordicApp extends App {
   )
   val (chiselArgs, params) = argParse(args.toList, defaultParams)
   // Run the Chisel driver to generate a cordic
-  Driver.execute(chiselArgs.toArray, () => new FixedIterativeCordic(params))
+  Driver.execute(chiselArgs.toArray, () => new IterativeCordic(params))
 }

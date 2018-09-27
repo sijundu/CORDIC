@@ -25,7 +25,7 @@ case class XYZ(
  *
  * Run each trial in @trials
  */
-class FixedCordicTester(c: FixedIterativeCordic, trials: Seq[XYZ]) extends DspTester(c) {
+class CordicTester[T <: chisel3.Data](c: IterativeCordic[T], trials: Seq[XYZ], tolLSBs: Int = 2) extends DspTester(c) {
   val maxCyclesWait = 50
 
   poke(c.io.out.ready, 1)
@@ -41,20 +41,24 @@ class FixedCordicTester(c: FixedIterativeCordic, trials: Seq[XYZ]) extends DspTe
     var cyclesWaiting = 0
     while (!peek(c.io.in.ready) && cyclesWaiting < maxCyclesWait) {
       cyclesWaiting += 1
-      expect(cyclesWaiting < maxCyclesWait, "waited for input too long")
+      if (cyclesWaiting >= maxCyclesWait) {
+        expect(false, "waited for input too long")
+      }
       step(1)
     }
     // wait until output is valid
     cyclesWaiting = 0
     while (!peek(c.io.out.valid) && cyclesWaiting < maxCyclesWait) {
       cyclesWaiting += 1
-      expect(cyclesWaiting < maxCyclesWait, "waited for output too long")
+      if (cyclesWaiting >= maxCyclesWait) {
+        expect(false, "waited for output too long")
+      }
       step(1)
     }
     // set desired tolerance
     // in this case, it's pretty loose (2 bits)
     // can you get tolerance of 1 bit? 0? what makes the most sense?
-    fixTolLSBs.withValue(2) {
+    fixTolLSBs.withValue(tolLSBs) {
       // check every output where we have an expected value
       trial.xout.foreach { x => expect(c.io.out.bits.x, x) }
       trial.yout.foreach { y => expect(c.io.out.bits.y, y) }
@@ -68,8 +72,16 @@ class FixedCordicTester(c: FixedIterativeCordic, trials: Seq[XYZ]) extends DspTe
  */
 object FixedCordicTester {
   def apply(params: FixedCordicParams, trials: Seq[XYZ]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-fiwv"), () => new FixedIterativeCordic(params)) {
-      c => new FixedCordicTester(c, trials)
+    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new IterativeCordic(params)) {
+      c => new CordicTester(c, trials)
+    }
+  }
+}
+
+object RealCordicTester {
+  def apply(params: CordicParams[dsptools.numbers.DspReal], trials: Seq[XYZ]): Boolean = {
+    chisel3.iotesters.Driver.execute(Array("-tbn", "verilator", "-fiwv"), () => new IterativeCordic(params)) {
+      c => new CordicTester(c, trials)
     }
   }
 }
