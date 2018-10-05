@@ -18,6 +18,7 @@ scalacOptions ++= Seq(
   "-Xcheckinit",
   "-Xlint:infer-any",
   "-Xlint:missing-interpolator",
+  "-Xsource:2.11",
   "-Ywarn-unused:imports",
   "-Ywarn-unused:locals",
   "-Ywarn-value-discard",
