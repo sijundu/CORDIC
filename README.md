@@ -1,4 +1,4 @@
-# EE 290C Individual Repository
+# Individual Repository
 
 This repo will house work for your individual assignments.
 
